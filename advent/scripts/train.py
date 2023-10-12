@@ -2,7 +2,8 @@
 # AdvEnt training
 # Copyright (c) 2019 valeo.ai
 #
-# Written by Tuan-Hung Vu
+# Written by Tsung-Yu Lin
+# Adapted from https://github.com/valeoai/ADVENT
 # --------------------------------------------------------
 import argparse
 import os
@@ -16,15 +17,13 @@ import yaml
 import torch
 from torch.utils import data
 
-from advent.model.deeplabv2 import get_deeplab_v2
-from advent.dataset.gta5 import GTA5DataSet
-from advent.dataset.cityscapes import CityscapesDataSet
-from advent.domain_adaptation.config import cfg, cfg_from_file
-from advent.domain_adaptation.train_UDA import train_domain_adaptation
+from lib.models.deeplabv2 import get_deeplab_v2
+from lib.dataset.datasets import ChromosomeDataset
+from config import get_cfg_defaults
+from lib.domain_adaptation.train_UDA import train_domain_adaptation
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore")
-
 
 def get_arguments():
     """
@@ -47,11 +46,13 @@ def get_arguments():
 def main():
     # LOAD ARGS
     args = get_arguments()
+    cfg = get_cfg_defaults()
     print('Called with args:')
     print(args)
 
     assert args.cfg is not None, 'Missing cfg file'
-    cfg_from_file(args.cfg)
+    if args.cfg:
+        cfg.merge_from_file(args.cfg)
     # auto-generate exp name if not specified
     if cfg.EXP_NAME == '':
         cfg.EXP_NAME = f'{cfg.SOURCE}2{cfg.TARGET}_{cfg.TRAIN.MODEL}_{cfg.TRAIN.DA_METHOD}'
@@ -62,6 +63,8 @@ def main():
     if cfg.TRAIN.SNAPSHOT_DIR == '':
         cfg.TRAIN.SNAPSHOT_DIR = osp.join(cfg.EXP_ROOT_SNAPSHOT, cfg.EXP_NAME)
         os.makedirs(cfg.TRAIN.SNAPSHOT_DIR, exist_ok=True)
+
+    
     # tensorboard
     if args.tensorboard:
         if cfg.TRAIN.TENSORBOARD_LOGDIR == '':
@@ -107,12 +110,9 @@ def main():
     print('Model loaded')
 
     # DATALOADERS
-    source_dataset = GTA5DataSet(root=cfg.DATA_DIRECTORY_SOURCE,
-                                 list_path=cfg.DATA_LIST_SOURCE,
-                                 set=cfg.TRAIN.SET_SOURCE,
-                                 max_iters=cfg.TRAIN.MAX_ITERS * cfg.TRAIN.BATCH_SIZE_SOURCE,
-                                 crop_size=cfg.TRAIN.INPUT_SIZE_SOURCE,
-                                 mean=cfg.TRAIN.IMG_MEAN)
+    source_dataset = ChromosomeDataset(img_dir=cfg.DATASET.IMGSOURCE,
+                                       mask_dir=cfg.DATASET.MASKSOURCE,
+                                       imgsize=cfg.TRAIN.INPUT_SIZE_SOURCE,)
     source_loader = data.DataLoader(source_dataset,
                                     batch_size=cfg.TRAIN.BATCH_SIZE_SOURCE,
                                     num_workers=cfg.NUM_WORKERS,
@@ -120,13 +120,9 @@ def main():
                                     pin_memory=True,
                                     worker_init_fn=_init_fn)
 
-    target_dataset = CityscapesDataSet(root=cfg.DATA_DIRECTORY_TARGET,
-                                       list_path=cfg.DATA_LIST_TARGET,
-                                       set=cfg.TRAIN.SET_TARGET,
-                                       info_path=cfg.TRAIN.INFO_TARGET,
-                                       max_iters=cfg.TRAIN.MAX_ITERS * cfg.TRAIN.BATCH_SIZE_TARGET,
-                                       crop_size=cfg.TRAIN.INPUT_SIZE_TARGET,
-                                       mean=cfg.TRAIN.IMG_MEAN)
+    target_dataset = ChromosomeDataset(img_dir=cfg.DATASET.IMGTARGET,
+                                       mask_dir=None,
+                                       crop_size=cfg.TRAIN.INPUT_SIZE_TARGET,)
     target_loader = data.DataLoader(target_dataset,
                                     batch_size=cfg.TRAIN.BATCH_SIZE_TARGET,
                                     num_workers=cfg.NUM_WORKERS,

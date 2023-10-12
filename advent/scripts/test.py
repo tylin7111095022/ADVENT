@@ -2,7 +2,8 @@
 # AdvEnt training
 # Copyright (c) 2019 valeo.ai
 #
-# Written by Tuan-Hung Vu
+# Written by Tsung-Yu Lin
+# Adapted from https://github.com/valeoai/ADVENT
 # --------------------------------------------------------
 import argparse
 import os
@@ -12,10 +13,10 @@ import warnings
 
 from torch.utils import data
 
-from advent.model.deeplabv2 import get_deeplab_v2
-from advent.dataset.cityscapes import CityscapesDataSet
-from advent.domain_adaptation.config import cfg, cfg_from_file
-from advent.domain_adaptation.eval_UDA import evaluate_domain_adaptation
+from lib.models.deeplabv2 import get_deeplab_v2
+from lib.dataset.datasets import ChromosomeDataset
+from config import cfg, get_cfg_defaults
+from lib.domain_adaptation.eval_UDA import evaluate_domain_adaptation
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore")
@@ -35,8 +36,9 @@ def get_arguments():
 
 def main(config_file, exp_suffix):
     # LOAD ARGS
+    cfg = get_cfg_defaults()
     assert config_file is not None, 'Missing cfg file'
-    cfg_from_file(config_file)
+    cfg.merge_from_file(config_file)
     # auto-generate exp name if not specified
     if cfg.EXP_NAME == '':
         cfg.EXP_NAME = f'{cfg.SOURCE}2{cfg.TARGET}_{cfg.TRAIN.MODEL}_{cfg.TRAIN.DA_METHOD}'
@@ -66,13 +68,9 @@ def main(config_file, exp_suffix):
         return
 
     # dataloaders
-    test_dataset = CityscapesDataSet(root=cfg.DATA_DIRECTORY_TARGET,
-                                     list_path=cfg.DATA_LIST_TARGET,
-                                     set=cfg.TEST.SET_TARGET,
-                                     info_path=cfg.TEST.INFO_TARGET,
-                                     crop_size=cfg.TEST.INPUT_SIZE_TARGET,
-                                     mean=cfg.TEST.IMG_MEAN,
-                                     labels_size=cfg.TEST.OUTPUT_SIZE_TARGET)
+    test_dataset = ChromosomeDataset(img_dir=cfg.DATASET.IMGTEST,
+                                       mask_dir=None,
+                                       crop_size=cfg.TEST.INPUT_SIZE_TARGET,)
     test_loader = data.DataLoader(test_dataset,
                                   batch_size=cfg.TEST.BATCH_SIZE_TARGET,
                                   num_workers=cfg.NUM_WORKERS,
