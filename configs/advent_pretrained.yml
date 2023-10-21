@@ -1,0 +1,8 @@
+SOURCE: GTA
+TARGET: Cityscapes
+EXP_NAME: Chromosome_Adaption
+NUM_WORKERS: 4
+TEST:
+  MODE: single
+  RESTORE_FROM:
+    - ../../pretrained_models/gta2cityscapes_advent.pth

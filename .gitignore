@@ -108,3 +108,6 @@ venv.bak/
 env/
 
 advent/data/
+advent/experiments/
+advent/test_img/
+advent/pretrained_models/

@@ -1,0 +1,32 @@
+SOURCE: zong
+TARGET: Chang_Gung
+NUM_WORKERS: 4
+DATASET:
+  IMGSOURCE: F:\2023\chromosomes\ADVENT\advent\data\zong\10000\train2017
+  MASKSOURCE: F:\2023\chromosomes\ADVENT\advent\data\zong\10000\train_mask
+  IMGTARGET: F:\2023\chromosomes\ADVENT\advent\data\Chang_Gung\images
+  IMGTEST: F:\2023\chromosomes\ADVENT\advent\data\zong\10000\val2017
+  MASKTEST: F:\2023\chromosomes\ADVENT\advent\data\zong\10000\val_mask
+TRAIN:
+  DA_METHOD: AdvEnt
+  MODEL: DeepLabv2
+  RESTORE_FROM: ./pretrained_models/DeepLab_resnet_pretrained_imagenet.pth
+  LEARNING_RATE: 1e-4
+  LEARNING_RATE_D: 1e-4
+  MULTI_LEVEL: False
+  LAMBDA_SEG_MAIN: 1.0
+  LAMBDA_ADV_MAIN: 0.1
+  EARLY_STOP: 30 # epoch
+  BATCH_SIZE_SOURCE: 16
+  BATCH_SIZE_TARGET: 16
+  SAVE_PRED_EVERY: 1
+  INPUT_SIZE_SOURCE: 257 # if 0 img and label remains original size and note bathsize must be 1
+  INPUT_SIZE_TARGET: 257 # if 0 img and label remains original size
+TEST:
+  MODE: best
+  SNAPSHOT_DIR: [F:\2023\chromosomes\ADVENT\advent\experiments\snapshots\zong2Chang_Gung_DeepLabv2_AdvEnt]
+  MULTI_LEVEL: (False,)
+  SNAPSHOT_STEP: 1
+  SNAPSHOT_MAXITER: 31
+  RESTORE_FROM: ["F:/2023/chromosomes/ADVENT/advent/experiments/snapshots/zong2Chang_Gung_DeepLabv2_AdvEnt/model_30.pth"]
+  INPUT_SIZE_TARGET: 0 # if 0 img and label remains original size
