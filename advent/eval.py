@@ -7,16 +7,19 @@ from PIL import Image
 import cv2
 from tqdm import tqdm
 
-from lib.models.deeplabv2 import get_deeplab_v2
-from lib.dataset.datasets import ChromosomeDataset
+from libs.models.deeplabv2 import get_deeplab_v2
+from libs.dataset.datasets import ChromosomeDataset
 from config import get_cfg_defaults
+
+# 要預測的圖片路徑
+IMG_PREDICT = r"F:\2023\chromosomes\ADVENT\advent\test_img\zong5img.jpg"
 
 def get_arguments():
     """
     Parse input arguments
     """
     parser = argparse.ArgumentParser(description="Code for evaluation")
-    parser.add_argument('--cfg', type=str,default="./configs/advent.yml",
+    parser.add_argument('--cfg', type=str,default="./configs/advent_nopretrained.yml",
                         help='optional config file', )
     return parser.parse_args()
 
@@ -36,14 +39,14 @@ def main():
     testset = ChromosomeDataset(img_dir=cfg.DATASET.IMGTEST,
                                 mask_dir=cfg.DATASET.MASKTEST,
                                 imgsize=cfg.TEST.INPUT_SIZE_TARGET,)
-    miou = evaluate_imgs(net=model,testdataset=testset)
+    miou = evaluate_imgs(net=model,testdataset=testset, cfg = cfg)
     print(f'miou = {miou:6.4f}')
 
     # predict one images
-    # predict_mask(net=model,imgpath=r"F:\2023\chromosomes\ADVENT\advent\test_img\zong5img.jpg")
+    predict_mask(net=model,imgpath=IMG_PREDICT)
 
 def evaluate_imgs(net,
-                testdataset,):
+                testdataset,cfg):
     """需要修改，因為評估方式會將原始圖片跟ground truth 全都resize成固定大小"""
     net.eval()
     total_iou = 0
@@ -59,8 +62,8 @@ def evaluate_imgs(net,
             aux_prob, mask_pred_prob = net(img)
             interp = torch.nn.Upsample(size=(truth.shape[2], truth.shape[3]), mode='bilinear', align_corners=True)  # interpolate output segmaps
             mask_pred_prob = interp(mask_pred_prob)
-            if aux_prob:
-                aux_prob = interp(aux_prob)
+            # if aux_prob:
+            #     aux_prob = interp(aux_prob)
             mask_pred = torch.argmax(torch.softmax(mask_pred_prob, dim=1),dim=1,keepdim=True).to(torch.int32)
             # print('shape of mask_pred: ',mask_pred.shape)
             mask = mask_pred.squeeze(0).detach()#(1,h ,w)
@@ -103,8 +106,8 @@ def predict_mask(net,imgpath:str,threshold:float= 0.5):
     interp = torch.nn.Upsample(size=(img.shape[2], img.shape[3]), mode='bilinear', align_corners=True)  # interpolate output segmaps
     aux_pred, mask_pred_prob = net(img)
     mask_pred_prob = interp(mask_pred_prob)
-    if aux_pred:
-                aux_pred = interp(aux_pred)
+    # if aux_pred:
+    #     aux_pred = interp(aux_pred)
     mask_pred = torch.argmax(torch.softmax(mask_pred_prob, dim=1),dim=1,keepdim=True).to(torch.int32)
     print(f"mask_pred value: {np.unique(mask_pred.numpy())}")
     mask_pred = mask_pred.squeeze().numpy()

@@ -17,10 +17,10 @@ import yaml
 import torch
 from torch.utils import data
 
-from lib.models.deeplabv2 import get_deeplab_v2
-from lib.dataset.datasets import ChromosomeDataset
+from libs.models.deeplabv2 import get_deeplab_v2
+from libs.dataset.datasets import ChromosomeDataset
 from config import get_cfg_defaults
-from lib.domain_adaptation.train_UDA import train_domain_adaptation
+from libs.domain_adaptation.train_UDA import train_domain_adaptation
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore")
@@ -30,7 +30,7 @@ def get_arguments():
     Parse input arguments
     """
     parser = argparse.ArgumentParser(description="Code for domain adaptation (DA) training")
-    parser.add_argument('--cfg', type=str, default="./configs/advent.yml",
+    parser.add_argument('--cfg', type=str, default="./configs/advent_nopretrained.yml",
                         help='optional config file', )
     parser.add_argument("--random-train", action="store_true",default=False,
                         help="not fixing random seed.")
@@ -41,7 +41,6 @@ def get_arguments():
     parser.add_argument("--exp-suffix", type=str, default=None,
                         help="optional experiment suffix")
     return parser.parse_args()
-
 
 def main():
     # LOAD ARGS
@@ -92,19 +91,20 @@ def main():
         return
 
     # LOAD SEGMENTATION NET
-    assert osp.exists(cfg.TRAIN.RESTORE_FROM), f'Missing init model {cfg.TRAIN.RESTORE_FROM}'
+    # assert osp.exists(cfg.TRAIN.RESTORE_FROM), f'Missing init model {cfg.TRAIN.RESTORE_FROM}'
     if cfg.TRAIN.MODEL == 'DeepLabv2':
         model = get_deeplab_v2(num_classes=cfg.NUM_CLASSES, multi_level=cfg.TRAIN.MULTI_LEVEL)
-        saved_state_dict = torch.load(cfg.TRAIN.RESTORE_FROM)
-        if 'DeepLab_resnet_pretrained_imagenet' in cfg.TRAIN.RESTORE_FROM:
-            new_params = model.state_dict().copy()
-            for i in saved_state_dict:
-                i_parts = i.split('.')
-                if not i_parts[1] == 'layer5':
-                    new_params['.'.join(i_parts[1:])] = saved_state_dict[i]
-            model.load_state_dict(new_params)
-        else:
-            model.load_state_dict(saved_state_dict)
+        if cfg.TRAIN.RESTORE_FROM:
+            saved_state_dict = torch.load(cfg.TRAIN.RESTORE_FROM)
+            if 'DeepLab_resnet_pretrained_imagenet' in cfg.TRAIN.RESTORE_FROM:
+                new_params = model.state_dict().copy()
+                for i in saved_state_dict:
+                    i_parts = i.split('.')
+                    if not i_parts[1] == 'layer5':
+                        new_params['.'.join(i_parts[1:])] = saved_state_dict[i]
+                model.load_state_dict(new_params)
+            else:
+                model.load_state_dict(saved_state_dict)
     else:
         raise NotImplementedError(f"Not yet supported {cfg.TRAIN.MODEL}")
     print('Model loaded')

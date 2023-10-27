@@ -60,7 +60,7 @@ class ChromosomeDataset(Dataset):
         return len(self.img_list)
     
 def _load_img(file, size, interpolation, rgb:bool):
-    """size可以為正整數或None"""
+    """size可以為正整數或None或0"""
     if rgb:
         img = cv2.imread(file)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)

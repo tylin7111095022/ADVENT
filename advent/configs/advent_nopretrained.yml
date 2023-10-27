@@ -10,7 +10,7 @@ DATASET:
 TRAIN:
   DA_METHOD: AdvEnt
   MODEL: DeepLabv2
-  RESTORE_FROM: ./pretrained_models/DeepLab_resnet_pretrained_imagenet.pth
+  RESTORE_FROM: ''
   LEARNING_RATE: 2.0e-4
   LEARNING_RATE_D: 1.0e-4
   MULTI_LEVEL: True

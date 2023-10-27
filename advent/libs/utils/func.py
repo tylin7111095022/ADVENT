@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from lib.utils.loss import cross_entropy_2d
+from libs.utils.loss import cross_entropy_2d
 
 
 def bce_loss(y_pred, y_label):

@@ -19,12 +19,12 @@ from torch import nn
 from torchvision.utils import make_grid
 from tqdm import tqdm
 
-from lib.models.discriminator import get_fc_discriminator
-from lib.utils.func import adjust_learning_rate, adjust_learning_rate_discriminator
-from lib.utils.func import loss_calc, bce_loss
-from lib.utils.loss import entropy_loss
-from lib.utils.func import prob_2_entropy
-from lib.utils.viz_segmask import colorize_mask
+from libs.models.discriminator import get_fc_discriminator
+from libs.utils.func import adjust_learning_rate, adjust_learning_rate_discriminator
+from libs.utils.func import loss_calc, bce_loss
+from libs.utils.loss import entropy_loss
+from libs.utils.func import prob_2_entropy
+from libs.utils.viz_segmask import colorize_mask
 
 def train_advent(model, trainloader, targetloader, cfg):
     ''' UDA training with advent
@@ -65,9 +65,9 @@ def train_advent(model, trainloader, targetloader, cfg):
     optimizer_d_aux = optim.SGD(d_aux.parameters(), lr=cfg.TRAIN.LEARNING_RATE_D,
                                 momentum=cfg.TRAIN.MOMENTUM,
                                 weight_decay=cfg.TRAIN.WEIGHT_DECAY)
-    optimizer_d_main = optim.Adam(d_main.parameters(),
-                          lr=cfg.TRAIN.LEARNING_RATE_D,
-                          betas=(0.9, 0.99))
+    optimizer_d_main = optim.SGD(d_main.parameters(), lr=cfg.TRAIN.LEARNING_RATE_D,
+                                momentum=cfg.TRAIN.MOMENTUM,
+                                weight_decay=cfg.TRAIN.WEIGHT_DECAY)
 
     # interpolate output segmaps
     interp = nn.Upsample(size=(input_size_source, input_size_source), mode='bilinear',
@@ -107,20 +107,22 @@ def train_advent(model, trainloader, targetloader, cfg):
             pred_src_main = interp(pred_src_main)
             if cfg.TRAIN.MULTI_LEVEL:
                 pred_src_aux = interp(pred_src_aux)
-                pred_src_aux = pred_src_aux.detach() #可以避免更新到分割模型
+                pred_src_aux = pred_src_aux.detach() # 可以避免更新到分割模型
                 d_out_aux = d_aux(prob_2_entropy(F.softmax(pred_src_aux)))
-                loss_d_aux = bce_loss(d_out_aux, source_label)
-                loss_d_aux = loss_d_aux / 2 # why divide 2
-                loss_d_aux.backward()
+                loss_d_aux_s = bce_loss(d_out_aux, source_label)
+                loss_d_aux_s = loss_d_aux_s / 2 # why divide 2
+                loss_d_aux_s.backward()
+            else:
+                loss_d_aux_s = 0
             pred_src_main = pred_src_main.detach()
             d_out_main = d_main(prob_2_entropy(F.softmax(pred_src_main)))
-            # print(f"shape of d_out_main: {d_out_main.shape}")
+            print(f" shape of d_out_main: {d_out_main.shape}")
             d_src_prob = F.sigmoid(d_out_main)
             # print(f"d_src_prob shape: {d_src_prob.shape}")
             # d_src_prob_list.append(d_src_prob)
-            loss_d_main = bce_loss(d_out_main, source_label)
-            loss_d_main = loss_d_main / 2 # why divide 2
-            loss_d_main.backward()
+            loss_d_main_s = bce_loss(d_out_main, source_label)
+            loss_d_main_s = loss_d_main_s / 2 # why divide 2
+            loss_d_main_s.backward()
 
             # train with target
             images, _ = batch_mix[1]
@@ -130,19 +132,19 @@ def train_advent(model, trainloader, targetloader, cfg):
                 pred_src_aux = interp(pred_src_aux)
                 pred_trg_aux = pred_trg_aux.detach()
                 d_out_aux = d_aux(prob_2_entropy(F.softmax(pred_trg_aux)))
-                loss_d_aux = bce_loss(d_out_aux, target_label)
-                loss_d_aux = loss_d_aux / 2 # why divide 2
-                loss_d_aux.backward()
+                loss_d_aux_t = bce_loss(d_out_aux, target_label)
+                loss_d_aux_t = loss_d_aux_t / 2 # why divide 2
+                loss_d_aux_t.backward()
             else:
-                loss_d_aux = 0
+                loss_d_aux_t = 0
             pred_trg_main = pred_trg_main.detach()
             d_out_main = d_main(prob_2_entropy(F.softmax(pred_trg_main)))
             d_target_prob = F.sigmoid(d_out_main)
             # print(f"d_target_prob shape: {d_target_prob.shape}")
             # d_target_prob_list.append(d_target_prob)
-            loss_d_main = bce_loss(d_out_main, target_label)
-            loss_d_main = loss_d_main / 2 # why divide 2
-            loss_d_main.backward()
+            loss_d_main_t = bce_loss(d_out_main, target_label)
+            loss_d_main_t = loss_d_main_t / 2 # why divide 2
+            loss_d_main_t.backward()
             #更新discriminator的參數
             if cfg.TRAIN.MULTI_LEVEL:
                 optimizer_d_aux.step()
@@ -179,6 +181,8 @@ def train_advent(model, trainloader, targetloader, cfg):
                 loss_adv_trg_aux = 0
             pred_trg_main = interp_target(pred_trg_main)
             d_out_main = d_main(prob_2_entropy(F.softmax(pred_trg_main)))
+            print(f" target domain img and source label is {source_label}, target label is {target_label}")
+            print(f" d_out_main for fool target domain batch 1 prob:\n {F.sigmoid(d_out_main[0][0])}")
             loss_adv_trg_main = bce_loss(d_out_main, source_label)
             loss = (cfg.TRAIN.LAMBDA_ADV_MAIN * loss_adv_trg_main
                     + cfg.TRAIN.LAMBDA_ADV_AUX * loss_adv_trg_aux)
@@ -191,8 +195,8 @@ def train_advent(model, trainloader, targetloader, cfg):
                             'loss_seg_src_main': loss_seg_src_main,
                             'loss_adv_trg_aux': loss_adv_trg_aux,
                             'loss_adv_trg_main': loss_adv_trg_main,
-                            'loss_d_aux': loss_d_aux,
-                            'loss_d_main': loss_d_main,
+                            'loss_d_aux': loss_d_aux_s + loss_d_aux_t,
+                            'loss_d_main': loss_d_main_t + loss_d_main_s,
                             "d_avg_src_prob": torch.sum(d_src_prob)/d_src_prob.numel(),
                             "d_avg_target_prob": torch.sum(d_target_prob)/d_target_prob.numel()}
             print_dict(current_losses, i_iter)

@@ -14,8 +14,8 @@ from torch import nn
 from tqdm import tqdm
 
 
-from lib.utils.func import per_class_iu, fast_hist
-from lib.utils.serialization import pickle_dump, pickle_load
+from libs.utils.func import per_class_iu, fast_hist
+from libs.utils.serialization import pickle_dump, pickle_load
 
 
 def evaluate_domain_adaptation( models, test_loader, cfg,

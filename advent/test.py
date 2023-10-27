@@ -13,10 +13,10 @@ import warnings
 
 from torch.utils import data
 
-from lib.models.deeplabv2 import get_deeplab_v2
-from lib.dataset.datasets import ChromosomeDataset
+from libs.models.deeplabv2 import get_deeplab_v2
+from libs.dataset.datasets import ChromosomeDataset
 from config import get_cfg_defaults
-from lib.domain_adaptation.eval_UDA import evaluate_domain_adaptation
+from libs.domain_adaptation.eval_UDA import evaluate_domain_adaptation
 
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore")

@@ -11,19 +11,19 @@ class Bottleneck(nn.Module):
         # change
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, bias=False)
         self.bn1 = nn.BatchNorm2d(planes, affine=affine_par)
-        for i in self.bn1.parameters():
-            i.requires_grad = False
+        # for i in self.bn1.parameters():
+        #     i.requires_grad = False
         padding = dilation
         # change
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1,
                                padding=padding, bias=False, dilation=dilation)
         self.bn2 = nn.BatchNorm2d(planes, affine=affine_par)
-        for i in self.bn2.parameters():
-            i.requires_grad = False
+        # for i in self.bn2.parameters():
+        #     i.requires_grad = False
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes * 4, affine=affine_par)
-        for i in self.bn3.parameters():
-            i.requires_grad = False
+        # for i in self.bn3.parameters():
+        #     i.requires_grad = False
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -74,8 +74,8 @@ class ResNetMulti(nn.Module):
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64, affine=affine_par)
-        for i in self.bn1.parameters():
-            i.requires_grad = False
+        # for i in self.bn1.parameters():
+        #     i.requires_grad = False
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True)  # change
         self.layer1 = self._make_layer(block, 64, layers[0])
@@ -83,8 +83,8 @@ class ResNetMulti(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4)
         if self.multi_level:
-            self.layer5 = ClassifierModule(1024, [6, 12, 18, 24], [6, 12, 18, 24], num_classes)
-        self.layer6 = ClassifierModule(2048, [6, 12, 18, 24], [6, 12, 18, 24], num_classes)
+            self.layer5 = ClassifierModule(1024, [2, 4, 8, 12], [2, 4, 8, 12], num_classes) # 將ASPP dilated conv 變小
+        self.layer6 = ClassifierModule(2048, [2, 4, 8, 12], [2, 4, 8, 12], num_classes) # 將ASPP dilated conv 變小
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 m.weight.data.normal_(0, 0.01)
@@ -102,8 +102,8 @@ class ResNetMulti(nn.Module):
                 nn.Conv2d(self.inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(planes * block.expansion, affine=affine_par))
-        for i in downsample._modules['1'].parameters():
-            i.requires_grad = False
+        # for i in downsample._modules['1'].parameters():
+        #     i.requires_grad = False
         layers = []
         layers.append(
             block(self.inplanes, planes, stride, dilation=dilation, downsample=downsample))
